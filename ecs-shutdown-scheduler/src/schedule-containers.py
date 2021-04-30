@@ -44,7 +44,7 @@ class ECS_Service:
     def start(self):
         """ Start the service based on the original parameters from the SSM Parameter Store
         """
-        param = ssm.get_parameter(Name=f"{self.ecs_cluster_id}-{self.ecs_service_name}-TaskAmount")
+        param = ssm.get_parameter(Name=f"/ecs-shutdown-scheduler/{self.ecs_cluster_id}-{self.ecs_service_name}")
         param = json.loads(param["Parameter"]["Value"])
 
         if self.has_autoscaling:
@@ -121,8 +121,8 @@ class ECS_Service:
         """ Saves given parameters as an ssm parameter
         """
         ssm.put_parameter(
-            Name=f"{self.ecs_cluster_id}-{self.ecs_service_name}-TaskAmount",
-            Description=f"Original parameter for {self.ecs_cluster_id}/service/{self.ecs_service_name}",
+            Name=f"/ecs-shutdown-scheduler/{self.ecs_cluster_id}-{self.ecs_service_name}",
+            Description=f"Original parameter for {self.ecs_cluster_id}/{self.ecs_service_name}",
             Value=json.dumps(params),
             Type="StringList",
             Overwrite=True,
@@ -140,7 +140,7 @@ def whitelisted(service_arn: str):
     return False
 
 
-def main():
+def lambda_handler(event, _):
     # configure logging
     level = os.environ.get("LOG_LEVEL", "INFO")
     logger = logging.getLogger()
@@ -159,13 +159,10 @@ def main():
                 logging.info(f"Service {service.ecs_service_name} is not whitelisted. Skipping...")
                 continue
 
-            task = os.environ.get("TASK")
+            task = event.get("Task", "")
             if task == "shutdown":
                 service.shutdown()
             elif task == "start":
                 service.start()
             else:
                 raise("Couldnt interpret TASK. Must be one of: shutdown, start. Exiting")
-
-
-main()

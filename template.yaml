@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ecs-shutdown-scheduler
+
+  Sample SAM Template for ecs-shutdown-scheduler
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+  LambdaFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: ecs-shutdown-scheduler/src
+      Handler: schedule-containers.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt LambdaRole.Arn
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        -
+          PolicyName: "Autoscaling"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+               -
+                 Sid: "Autoscaling"
+                 Effect: "Allow"
+                 Action: 
+                  - "application-autoscaling:DescribeScalableTargets"
+                  - "application-autoscaling:RegisterScalableTarget"
+                 Resource: "*"
+        -
+          PolicyName: "ECS"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+               -
+                 Sid: "List"
+                 Effect: "Allow"
+                 Action: 
+                  - "ecs:ListClusters"   
+                  - "ecs:ListServices"
+                 Resource: "*"           
+               -
+                 Sid: "Services"
+                 Effect: "Allow"
+                 Action: 
+                  - "ecs:UpdateService"
+                  - "ecs:DescribeServices"
+                 Resource: !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/*"
+        -
+          PolicyName: "ParameterStore"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+               -
+                 Sid: "ParameterStore"
+                 Effect: "Allow"
+                 Action: 
+                  - "ssm:GetParameter"
+                  - "ssm:PutParameter"
+                 Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ecs-shutdown-scheduler/*"
+
+
+  # Cloudwatch event to start containers periodically
+  StartRule:
+    Type: "AWS::Events::Rule"
+    Properties: 
+      Description: "CloudWatch Event to trigger lambda fn"
+      ScheduleExpression: "cron(0 7 * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - LambdaFunction
+              - Arn
+          Id: "targetevent_v1"
+          Input: "{\"Task\": \"start\"}"
+
+  PermissionForEventsToInvokeLambda: 
+    Type: "AWS::Lambda::Permission"
+    Properties: 
+      FunctionName: !Ref LambdaFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - StartRule
+          - Arn
+
+  # Cloudwatch event to shutdown containers periodically
+  ShutdownRule:
+    Type: "AWS::Events::Rule"
+    Properties: 
+      Description: "CloudWatch Event to trigger lambda fn"
+      ScheduleExpression: "cron(0 21 * * ? *)"
+      State: "ENABLED"
+      Targets:
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - LambdaFunction
+              - Arn
+          Id: "targetevent_v1"
+          Input: "{\"Task\": \"shutdown\"}"
+
+  PermissionForEventsToInvokeLambda: 
+    Type: "AWS::Lambda::Permission"
+    Properties: 
+      FunctionName: !Ref LambdaFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - ShutdownRule
+          - Arn

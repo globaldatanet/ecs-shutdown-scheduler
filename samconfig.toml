@@ -1,0 +1,9 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "ecs-shutdown-scheduler"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-atzxo9zmuttm"
+s3_prefix = "ecs-shutdown-scheduler"
+region = "eu-west-1"
+capabilities = "CAPABILITY_IAM"
