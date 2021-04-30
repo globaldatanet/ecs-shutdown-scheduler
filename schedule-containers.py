@@ -19,7 +19,7 @@ class ECS_Service:
     ecs_service_name = ""
     has_autoscaling = False
 
-    def __init__(self, cluster_arn, service_arn):
+    def __init__(self, cluster_arn: str, service_arn: str):
         self.cluster_arn = cluster_arn
         self.ecs_cluster_id = re.match(r"arn:aws:ecs:.+:cluster\/(.+)", cluster_arn).group(1)
         self.service_arn = service_arn
@@ -42,7 +42,8 @@ class ECS_Service:
 
 
     def start(self):
-        # get ssm parameter
+        """ Start the service based on the original parameters from the SSM Parameter Store
+        """
         param = ssm.get_parameter(Name=f"{self.ecs_cluster_id}-{self.ecs_service_name}-TaskAmount")
         param = json.loads(param["Parameter"]["Value"])
 
@@ -65,7 +66,8 @@ class ECS_Service:
         )
 
     def shutdown(self):
-        # get the desired count
+        """ Shutdown the service and save the original parameters in the SSM Parameter Store
+        """
         service_status = ecs.describe_services(cluster=self.cluster_arn, services=[self.ecs_service_name])
         desired_count = service_status["services"][0]["desiredCount"]
 
@@ -79,7 +81,7 @@ class ECS_Service:
             self._shutdown_without_autoscaling(desired_count)
             
 
-    def _shutdown_without_autoscaling(self, desired_count):
+    def _shutdown_without_autoscaling(self, desired_count: int):
         original_params = {
             "Desired": desired_count,
         }
@@ -87,7 +89,7 @@ class ECS_Service:
         self._save_parameters(original_params)
         self._set_desired_count(0)
 
-    def _shutdown_with_autoscaling(self, desired_count):
+    def _shutdown_with_autoscaling(self, desired_count: int):
         minimum_tasks = self.target["ScalableTargets"][0]["MinCapacity"]
         maximum_tasks = self.target["ScalableTargets"][0]["MaxCapacity"]
 
@@ -109,13 +111,15 @@ class ECS_Service:
         self._save_parameters(original_params)
         self._set_desired_count(0)
 
-    def _set_desired_count(self, desired_count):
+    def _set_desired_count(self, desired_count: int):
         """ Update the desired count of a given service
         """
         ecs.update_service(cluster=self.cluster_arn, service=self.ecs_service_name, desiredCount=desired_count)
         logging.info(f"'{self.ecs_cluster_id}/{self.ecs_service_name}' was set to {desired_count}")
 
-    def _save_parameters(self, params):
+    def _save_parameters(self, params: json):
+        """ Saves given parameters as an ssm parameter
+        """
         ssm.put_parameter(
             Name=f"{self.ecs_cluster_id}-{self.ecs_service_name}-TaskAmount",
             Description=f"Original parameter for {self.ecs_cluster_id}/service/{self.ecs_service_name}",
@@ -126,7 +130,9 @@ class ECS_Service:
         logging.info("Saved configuration to parameter store")
 
 
-def whitelisted(service_arn):
+def whitelisted(service_arn: str):
+    """ Determines whether or not a service is whitelisted for this scheduler
+    """
     for item in WHITELIST:
         if item in service_arn:
             return True
@@ -135,7 +141,7 @@ def whitelisted(service_arn):
 
 
 def main():
-    # Configure logging
+    # configure logging
     level = os.environ.get("LOG_LEVEL", "INFO")
     logger = logging.getLogger()
     logger.setLevel(level)
