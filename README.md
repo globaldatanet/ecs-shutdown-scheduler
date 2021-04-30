@@ -1,5 +1,7 @@
 # ECS Shutdown Scheduler
 
+![Linting](https://github.com/globaldatanet/ecs-shutdown-scheduler/workflows/Linting/badge.svg)
+
 Shuts down and starts containers for cost saving in development environments.
 
 Leverages aws SAM for the infrastructure code and quick deployment.
