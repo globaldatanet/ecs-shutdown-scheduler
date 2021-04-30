@@ -4,9 +4,6 @@ import re
 import json
 import boto3
 
-WHITELIST = ["dev", "test"]
-
-
 ssm = boto3.client("ssm")
 aas = boto3.client("application-autoscaling")
 ecs = boto3.client("ecs")
@@ -79,7 +76,7 @@ class ECS_Service:
             self._shutdown_with_autoscaling(desired_count)
         else:
             self._shutdown_without_autoscaling(desired_count)
-            
+
 
     def _shutdown_without_autoscaling(self, desired_count: int):
         original_params = {
@@ -133,7 +130,9 @@ class ECS_Service:
 def whitelisted(service_arn: str):
     """ Determines whether or not a service is whitelisted for this scheduler
     """
-    for item in WHITELIST:
+    whitelist = os.getenv("WHITELIST").split(",")
+
+    for item in whitelist:
         if item in service_arn:
             return True
 

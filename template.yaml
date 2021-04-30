@@ -8,7 +8,12 @@ Description: >
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
-    Timeout: 3
+    Timeout: 5
+
+Parameters:
+  Whitelist:
+    Type: String
+    Default: "dev,test"
 
 Resources:
   LambdaFunction:
@@ -18,6 +23,10 @@ Resources:
       Handler: schedule-containers.lambda_handler
       Runtime: python3.8
       Role: !GetAtt LambdaRole.Arn
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+          WHITELIST: !Ref Whitelist
 
   LambdaRole:
     Type: AWS::IAM::Role
