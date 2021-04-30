@@ -37,7 +37,6 @@ class ECS_Service:
             self.target = target
             self.has_autoscaling = True
 
-
     def start(self):
         """ Start the service based on the original parameters from the SSM Parameter Store
         """
@@ -76,7 +75,6 @@ class ECS_Service:
             self._shutdown_with_autoscaling(desired_count)
         else:
             self._shutdown_without_autoscaling(desired_count)
-
 
     def _shutdown_without_autoscaling(self, desired_count: int):
         original_params = {
