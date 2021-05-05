@@ -20,7 +20,7 @@ Resources:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: ecs_shutdown_scheduler/src
-      Handler: schedule-containers.lambda_handler
+      Handler: schedule_containers.lambda_handler
       Runtime: python3.8
       Role: !GetAtt LambdaRole.Arn
       Environment:
