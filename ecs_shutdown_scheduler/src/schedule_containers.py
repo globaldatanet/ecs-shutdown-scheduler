@@ -3,6 +3,9 @@ import os
 import boto3
 from . import ECSService
 
+
+logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
 ecs = boto3.client("ecs")
 
 
@@ -11,26 +14,17 @@ def whitelisted(service_arn: str):
     """
     whitelist = os.getenv("WHITELIST").split(",")
 
-    for item in whitelist: # TODO convert to any
-        if item in service_arn:
-            return True
-
-    return False
+    return any([True for x in whitelist if x in service_arn])
 
 
 def lambda_handler(event, _context):
-    # configure logging
-    level = os.environ.get("LOG_LEVEL", "INFO") # TODO change to antons snippet (at the top)
-    logger = logging.getLogger()
-    logger.setLevel(level)
-
     clusters = ecs.list_clusters()
 
-    for cluster_arn in clusters["clusterArns"]: # TODO what if no clusters exist? will this result in a lookup error? then get(, []) instead
+    for cluster_arn in clusters["clusterArns"]:
         # list each service for ecs clusters
         cluster_services = ecs.list_services(cluster=cluster_arn)
 
-        for service_arn in cluster_services["serviceArns"]: # TODO same
+        for service_arn in cluster_services["serviceArns"]:
             service = ECSService.ECSService(cluster_arn, service_arn)
 
             if not whitelisted(service_arn):
