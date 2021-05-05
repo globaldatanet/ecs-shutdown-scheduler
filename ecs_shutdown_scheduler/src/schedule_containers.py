@@ -1,7 +1,7 @@
 import logging
 import os
 import boto3
-from . import ECSService
+import ECSService
 
 
 logging.getLogger().setLevel(os.environ.get("LOG_LEVEL", "INFO"))
