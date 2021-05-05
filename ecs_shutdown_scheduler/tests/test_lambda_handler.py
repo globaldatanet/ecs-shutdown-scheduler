@@ -1,4 +1,5 @@
-import schedule_containers
+from ecs_shutdown_scheduler.src import schedule_containers
+from ecs_shutdown_scheduler.src import ECSService
 from moto import mock_applicationautoscaling
 
 CLUSTER_ID = "test-cluster"
@@ -31,5 +32,5 @@ def test_constructor_no_autoscaling():
         when: the constructor is called
         then: has_autoscaling is set to False
     """
-    cluster = schedule_containers.ECS_Service(CLUSTER_ARN, SERVICE_ARN)
+    cluster = ECSService.ECSService(CLUSTER_ARN, SERVICE_ARN)
     assert not cluster.has_autoscaling

@@ -1,15 +1,14 @@
-import logging
-import os
 import re
 import json
 import boto3
+import logging
 
 ssm = boto3.client("ssm")
 aas = boto3.client("application-autoscaling")
 ecs = boto3.client("ecs")
 
 
-class ECS_Service:
+class ECSService:
     cluster_arn = ""
     ecs_cluster_id = ""
     service_arn = ""
@@ -23,19 +22,20 @@ class ECS_Service:
         self.ecs_service_name = re.match(r"arn:aws:ecs:.+:service\/.+\/(.+)", service_arn).group(1)
 
         # try to get the scalable target
+        aas = boto3.client("application-autoscaling")
         target = aas.describe_scalable_targets(
             ServiceNamespace="ecs",
             ResourceIds=[f"service/{self.ecs_cluster_id}/{self.ecs_service_name}"],
             ScalableDimension="ecs:service:DesiredCount",
         )
 
-        if target["ScalableTargets"] == []:
-            logging.debug(f"No autoscaling configured for service {self.ecs_service_name}")
-            self.has_autoscaling = False
-        else:
+        if target["ScalableTargets"]:
             logging.debug(f"Autoscaling configuration detected for service {self.ecs_service_name}.")
             self.target = target
             self.has_autoscaling = True
+        else:
+            logging.debug(f"No autoscaling configured for service {self.ecs_service_name}")
+            self.has_autoscaling = False
 
     def start(self):
         """ Start the service based on the original parameters from the SSM Parameter Store
@@ -67,7 +67,7 @@ class ECS_Service:
         service_status = ecs.describe_services(cluster=self.cluster_arn, services=[self.ecs_service_name])
         desired_count = service_status["services"][0]["desiredCount"]
 
-        if desired_count == 0:
+        if not desired_count:
             logging.info(f"Service {self.ecs_service_name} is already shutdown. Nothing to do. Skipping...")
             return
 
@@ -112,7 +112,7 @@ class ECS_Service:
         ecs.update_service(cluster=self.cluster_arn, service=self.ecs_service_name, desiredCount=desired_count)
         logging.info(f"'{self.ecs_cluster_id}/{self.ecs_service_name}' was set to {desired_count}")
 
-    def _save_parameters(self, params: json):
+    def _save_parameters(self, params: dict):
         """ Saves given parameters as an ssm parameter
         """
         ssm.put_parameter(
@@ -123,43 +123,3 @@ class ECS_Service:
             Overwrite=True,
         )
         logging.info("Saved configuration to parameter store")
-
-
-def whitelisted(service_arn: str):
-    """ Determines whether or not a service is whitelisted for this scheduler
-    """
-    whitelist = os.getenv("WHITELIST").split(",")
-
-    for item in whitelist:
-        if item in service_arn:
-            return True
-
-    return False
-
-
-def lambda_handler(event, _):
-    # configure logging
-    level = os.environ.get("LOG_LEVEL", "INFO")
-    logger = logging.getLogger()
-    logger.setLevel(level)
-
-    clusters = ecs.list_clusters()
-
-    for cluster_arn in clusters["clusterArns"]:
-        # list each service for ecs clusters
-        cluster_services = ecs.list_services(cluster=cluster_arn)
-
-        for service_arn in cluster_services["serviceArns"]:
-            service = ECS_Service(cluster_arn, service_arn)
-
-            if not whitelisted(service_arn):
-                logging.info(f"Service {service.ecs_service_name} is not whitelisted. Skipping...")
-                continue
-
-            task = event.get("Task", "")
-            if task == "shutdown":
-                service.shutdown()
-            elif task == "start":
-                service.start()
-            else:
-                raise("Couldnt interpret TASK. Must be one of: shutdown, start. Exiting")

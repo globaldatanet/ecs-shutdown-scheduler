@@ -19,7 +19,7 @@ Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
-      CodeUri: ecs-shutdown-scheduler/src
+      CodeUri: ecs_shutdown_scheduler/src
       Handler: schedule-containers.lambda_handler
       Runtime: python3.8
       Role: !GetAtt LambdaRole.Arn
@@ -51,7 +51,7 @@ Resources:
                -
                  Sid: "Autoscaling"
                  Effect: "Allow"
-                 Action: 
+                 Action:
                   - "application-autoscaling:DescribeScalableTargets"
                   - "application-autoscaling:RegisterScalableTarget"
                  Resource: "*"
@@ -63,14 +63,14 @@ Resources:
                -
                  Sid: "List"
                  Effect: "Allow"
-                 Action: 
-                  - "ecs:ListClusters"   
+                 Action:
+                  - "ecs:ListClusters"
                   - "ecs:ListServices"
-                 Resource: "*"           
+                 Resource: "*"
                -
                  Sid: "Services"
                  Effect: "Allow"
-                 Action: 
+                 Action:
                   - "ecs:UpdateService"
                   - "ecs:DescribeServices"
                  Resource: !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/*"
@@ -82,7 +82,7 @@ Resources:
                -
                  Sid: "ParameterStore"
                  Effect: "Allow"
-                 Action: 
+                 Action:
                   - "ssm:GetParameter"
                   - "ssm:PutParameter"
                  Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ecs-shutdown-scheduler/*"
@@ -91,53 +91,53 @@ Resources:
   # Cloudwatch event to start containers periodically
   StartRule:
     Type: "AWS::Events::Rule"
-    Properties: 
+    Properties:
       Description: "CloudWatch Event to trigger lambda fn"
       ScheduleExpression: "cron(0 7 * * ? *)"
       State: "ENABLED"
       Targets:
-        - 
-          Arn: 
-            Fn::GetAtt: 
+        -
+          Arn:
+            Fn::GetAtt:
               - LambdaFunction
               - Arn
           Id: "targetevent_v1"
           Input: "{\"Task\": \"start\"}"
 
-  PermissionForEventsToInvokeLambda: 
+  PermissionForEventsToInvokeLambda:
     Type: "AWS::Lambda::Permission"
-    Properties: 
+    Properties:
       FunctionName: !Ref LambdaFunction
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
+      SourceArn:
+        Fn::GetAtt:
           - StartRule
           - Arn
 
   # Cloudwatch event to shutdown containers periodically
   ShutdownRule:
     Type: "AWS::Events::Rule"
-    Properties: 
+    Properties:
       Description: "CloudWatch Event to trigger lambda fn"
       ScheduleExpression: "cron(0 21 * * ? *)"
       State: "ENABLED"
       Targets:
-        - 
-          Arn: 
-            Fn::GetAtt: 
+        -
+          Arn:
+            Fn::GetAtt:
               - LambdaFunction
               - Arn
           Id: "targetevent_v1"
           Input: "{\"Task\": \"shutdown\"}"
 
-  PermissionForEventsToInvokeLambda: 
+  PermissionForEventsToInvokeLambda:
     Type: "AWS::Lambda::Permission"
-    Properties: 
+    Properties:
       FunctionName: !Ref LambdaFunction
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
+      SourceArn:
+        Fn::GetAtt:
           - ShutdownRule
           - Arn
