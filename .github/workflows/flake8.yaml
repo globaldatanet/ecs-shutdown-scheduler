@@ -1,4 +1,4 @@
-  
+
 name: Linting
 
 on: [push]
@@ -15,4 +15,4 @@ jobs:
       - name: Install Flake8
         run: pip install flake8
       - name: Run flake8
-        run: flake8 ecs-shutdown-scheduler/
+        run: flake8 ecs_shutdown_scheduler/
