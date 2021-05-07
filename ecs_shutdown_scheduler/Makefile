@@ -13,4 +13,4 @@ install: ## Install all dependencies
 
 test: ## Run the tests
 	. ../.venv/bin/activate; \
-	PYTHONPATH=./src pytest
+	pytest

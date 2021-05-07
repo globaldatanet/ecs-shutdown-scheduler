@@ -1,5 +1,4 @@
-import schedule_containers
-import ECSService
+from ecs_shutdown_scheduler.src import schedule_containers, ECSService
 from moto import mock_applicationautoscaling
 
 CLUSTER_ID = "test-cluster"
