@@ -14,6 +14,13 @@ Parameters:
   Whitelist:
     Type: String
     Default: "dev,test"
+  StartSchedule:
+    Type: String
+    Default: "cron(0 7 * * ? *)"
+  ShutdownSchedule:
+    Type: String
+    Default: "cron(0 21 * * ? *)"
+
 
 Resources:
   LambdaFunction:
@@ -27,6 +34,17 @@ Resources:
         Variables:
           LOG_LEVEL: INFO
           WHITELIST: !Ref Whitelist
+      Events:
+        Start:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref StartSchedule
+            Input: "{\"Task\": \"start\"}"
+        Shutdown:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ShutdownSchedule
+            Input: "{\"Task\": \"shutdown\"}"
 
   LambdaRole:
     Type: AWS::IAM::Role
@@ -86,58 +104,3 @@ Resources:
                   - "ssm:GetParameter"
                   - "ssm:PutParameter"
                  Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ecs-shutdown-scheduler/*"
-
-
-  # Cloudwatch event to start containers periodically
-  StartRule:
-    Type: "AWS::Events::Rule"
-    Properties:
-      Description: "CloudWatch Event to trigger lambda fn"
-      ScheduleExpression: "cron(0 7 * * ? *)"
-      State: "ENABLED"
-      Targets:
-        -
-          Arn:
-            Fn::GetAtt:
-              - LambdaFunction
-              - Arn
-          Id: "targetevent_v1"
-          Input: "{\"Task\": \"start\"}"
-
-  PermissionForEventsToInvokeLambda:
-    Type: "AWS::Lambda::Permission"
-    Properties:
-      FunctionName: !Ref LambdaFunction
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt:
-          - StartRule
-          - Arn
-
-  # Cloudwatch event to shutdown containers periodically
-  ShutdownRule:
-    Type: "AWS::Events::Rule"
-    Properties:
-      Description: "CloudWatch Event to trigger lambda fn"
-      ScheduleExpression: "cron(0 21 * * ? *)"
-      State: "ENABLED"
-      Targets:
-        -
-          Arn:
-            Fn::GetAtt:
-              - LambdaFunction
-              - Arn
-          Id: "targetevent_v1"
-          Input: "{\"Task\": \"shutdown\"}"
-
-  PermissionForEventsToInvokeLambda:
-    Type: "AWS::Lambda::Permission"
-    Properties:
-      FunctionName: !Ref LambdaFunction
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt:
-          - ShutdownRule
-          - Arn
