@@ -27,6 +27,6 @@ sam deploy --guided
 
 We're open for community contributions!
 
-1) Download the repo
+1) Fork the repo
 2) Run the tests
 3) Make your changes and create a Pull Request
