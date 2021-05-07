@@ -1,4 +1,4 @@
-pytest
-pytest-mock
-boto3
-moto
+pytest==6.2.3
+pytest-mock==3.6.0
+boto3==1.17.61
+moto==2.0.5
